@@ -1,9 +1,9 @@
+#pragma once
 //
 // Created by Yaison on 27/11/25.
 //
 
-#ifndef RAILCROSSING_H
-#define RAILCROSSING_H
+
 #include <Arduino.h>
 
 
@@ -38,6 +38,3 @@ class RailCrossing {
       _previousMillis = millis();
     }
 };
-
-
-#endif //RAILCROSSING_H

@@ -1,9 +1,9 @@
+#pragma once
+
 //
 // Created by Yaison on 25/10/25.
 //
 
-#ifndef PCF_H
-#define PCF_H
 
 class PCF {
   const int _addr;
@@ -53,6 +53,3 @@ class PCF {
       write(modifiedPcf);
     }
 };
-
-
-#endif //PCF_H

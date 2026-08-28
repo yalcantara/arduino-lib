@@ -1,9 +1,11 @@
+#pragma once
+
 //
 // Created by Yaison on 26/11/25.
 //
 
-#ifndef FROGRELAYS_H
-#define FROGRELAYS_H
+
+
 #include <Arduino.h>
 
 enum FrogRelayState {
@@ -57,4 +59,3 @@ class FrogRelays {
       }
     }
 };
-#endif //FROGRELAYS_H

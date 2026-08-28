@@ -1,5 +1,6 @@
-#ifndef __ylib
-#define __ylib
+#pragma once
+
+namespace ylib::core {
 
 uint8_t __YLIB_DEBUG_ENABLED = 0;
 
@@ -17,7 +18,7 @@ inline String padWithSpaces(int size, long value) {
   char buffer[size + 1];
   sprintf(buffer, format, value);
 
-  return String(buffer);
+  return {buffer};
 }
 
 // Helper functions
@@ -25,10 +26,10 @@ inline String padWithSpaces(int size, long value) {
 inline int avgAnalogRead(const uint8_t pin, const uint8_t samples = 8) {
   float sum = 0.0;
   for (int i = 0; i < samples; i++) {
-    sum += analogRead(pin);
+    sum += static_cast<float>(analogRead(pin));
   }
 
-  return (int) round( sum / samples);
+  return static_cast<int>(round(sum / static_cast<float>(samples)));
 }
 
 inline void checkArgument(const long min, const long max, const long value) {
@@ -248,5 +249,4 @@ class Timer {
     }
 
 };
-
-#endif
+}

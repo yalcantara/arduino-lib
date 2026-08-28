@@ -1,11 +1,17 @@
+#pragma once
+
 //
 // Created by Yaison on 18/6/25.
 //
 
-#ifndef DCSENSOR_H
-#define DCSENSOR_H
+#include <Arduino.h>
+#include <ylib/core/core.h>
 
-#include <ylib/ylib.h>
+namespace arduino {
+class String;
+}
+
+using namespace ylib::core;
 
 constexpr float ACS712_SENSITIVITY = 0.185; // Sensitivity of the ACS712 sensor in V/A (185 mV/A)
 constexpr float ACS712_MAX_AMPS = 5.0; // Maximum current in Amps
@@ -13,9 +19,15 @@ constexpr float ACS712_MAX_AMPS = 5.0; // Maximum current in Amps
 class DCSensor {
   const String _label;
   const int _pin;
+  const float _sensorSensitivity;
+
   float _calibration; // Calibration value for the sensor
   SMA<int> _buffer;
   bool _calibrated = false;
+  uint8_t _calibrationIdx = 0;
+  bool _calibrationBufferFull = false;
+  float _lastCalibrationAvg = 0.0f;
+  uint8_t _withinCalibrationBandCount = 0;
 
   [[nodiscard]] float computeMilliAmps(const float rawADC) const {
     // Convert ADC reading to voltage
@@ -23,7 +35,7 @@ class DCSensor {
 
     // Calculate current in Amps
     const float calibratedVoltage = voltage - _calibration;
-    const float currentAmps = calibratedVoltage / ACS712_SENSITIVITY;
+    const float currentAmps = calibratedVoltage / _sensorSensitivity;
 
     // Convert to milliamps
     return currentAmps * 1000.0f;
@@ -31,22 +43,31 @@ class DCSensor {
 
   public:
     DCSensor(
-      const String label,
+      const String &label,
       const int pin,
-      const float calibration,
+      const float sensorSensitivity = ACS712_SENSITIVITY,
+      // Default assumes ACS712
+      const float calibration = 1.0,
       const int buffSize = 8): _label(label),
                                _pin(pin),
+                               _sensorSensitivity(sensorSensitivity),
                                _calibration(calibration),
                                _buffer(buffSize) {
     }
+
+    virtual ~DCSensor() = default;
 
     void setup() const {
       checkArgument(PIN_A1, PIN_A5, _pin);
       checkArgFloat(1.0, 5.0, _calibration);
     }
 
+    virtual int doRead() const {
+      return avgAnalogRead(_pin, 16);
+    }
+
     void loop() {
-      const int r = avgAnalogRead(_pin, 16);
+      const int r = doRead();
       if (r < 0 || r > 1023) {
         Serial.println("Analog read out of range (0-1023)");
         return;
@@ -60,7 +81,7 @@ class DCSensor {
     }
 
 
-    [[nodiscard]] String label() const {
+    [[nodiscard]] const String &label() const {
       return _label;
     }
 
@@ -81,99 +102,84 @@ class DCSensor {
     }
 
 
-    static const uint8_t CALIB_SAMPLES = 64;
+    static constexpr uint8_t CALIB_SAMPLES = 64;
 
-    void calibrate(float buff[]) {
-      // Persistent state
-      static uint8_t idx = 0;
-      static bool full = false;
-      static float lastAvg = 0.0f;
-      static uint8_t withinBandCnt = 0; // consecutive safe readings
-
-      // ---- 1) Take new reading ----
-      float mA = getMilliAmps();
-      if (mA == 0.0f) {
-        // No valid reading yet
-        return;
+    bool calibrate(float buff[]) {
+      if (_calibrated) {
+        return true;
       }
 
+      // ---- 1) Take new reading ----
+      if (_buffer.isFilled() == false) {
+        return false;
+      }
+
+      const float mA = getMilliAmps();
+
       // ---- 2) Store in circular buffer ----
-      buff[idx] = mA;
-      idx++;
-      if (idx >= CALIB_SAMPLES) {
-        idx = 0;
-        full = true;
+      buff[_calibrationIdx] = mA;
+      _calibrationIdx++;
+      if (_calibrationIdx >= CALIB_SAMPLES) {
+        _calibrationIdx = 0;
+        _calibrationBufferFull = true;
       }
 
       // ---- 3) Compute rolling average ----
-      uint8_t count = full ? CALIB_SAMPLES : idx;
-      if (count == 0) return;
+      const uint8_t count = _calibrationBufferFull ? CALIB_SAMPLES : _calibrationIdx;
+      if (count == 0) return false;
 
       float sum = 0.0f;
       for (uint8_t i = 0; i < count; ++i) sum += buff[i];
-      float avg = sum / (float) count;
+      const float avg = sum / static_cast<float>(count);
 
       // ---- 4) Deadband logic ----
-      const float deadband_mA = 2.0f; // acceptable noise range
+      constexpr float deadband_mA = 2.0f; // acceptable noise range
 
       if (fabsf(avg) <= deadband_mA) {
         // Average inside acceptable band → increment safety counter
-        if (withinBandCnt < 255) withinBandCnt++;
+        if (_withinCalibrationBandCount < 255) _withinCalibrationBandCount++;
 
         // Need *7 consecutive safe averages* to stop adjusting
-        if (withinBandCnt >= 7) {
-          lastAvg = avg;
+        if (_withinCalibrationBandCount >= 7) {
+          _lastCalibrationAvg = avg;
           _calibrated = true;
           Serial.print(_label);
           Serial.print(" -> ");
-          Serial.print("Calibration complete. Final Avg mA: ");
+          Serial.print("Calibration complete.\nFinal Avg mA: ");
           Serial.print(avg, 2);
-          Serial.print("  Final Calib: ");
+          Serial.print(", Final Calibration value: ");
           Serial.print(_calibration, 5);
           Serial.println();
-          return;
+          return true;
         }
-        // Otherwise continue adjusting
-      } else {
-        // Outside acceptable noise band → reset counter
-        withinBandCnt = 0;
+
+        // Keep the current calibration while confirming that readings remain
+        // inside the deadband.
+        _lastCalibrationAvg = avg;
+        return false;
       }
-
-      // ---- 5) Fixed calibration step size ----
-      float step = 0.0001f; // <-- FIXED STEP SIZE (ABSOLUTE)
-
-      // Overshoot detection can be kept if desired,
-      // but with fixed steps it's optional. We'll keep it relevant:
-      bool overshoot =
-          (avg > 0 && lastAvg < 0) ||
-          (avg < 0 && lastAvg > 0);
-
-      if (overshoot) {
-        // With fixed step size, overshoot just means continue gently.
-        // No need to change step, but we can log or react here if needed.
-      }
-
-      // ---- 6) Direction of calibration adjust ----
-      // avg > 0  → reading too high → increase _calibration
-      // avg < 0  → reading too low  → decrease _calibration
-      if (avg > 0)
-        _calibration += step;
-      else
-        _calibration -= step;
+      // Outside acceptable noise band → reset counter
+      _withinCalibrationBandCount = 0;
 
 
-      Serial.print(_label);
-      Serial.print(" -> ");
-      Serial.print("Calibrating... Avg mA: ");
-      Serial.print(avg, 2);
-      Serial.print("  New Calib: ");
-      Serial.print(_calibration, 5);
-      Serial.print("  Step: ");
-      Serial.print(step, 5);
-      Serial.println();
-      // ---- 7) Save average for next iteration ----
-      lastAvg = avg;
+      // ---- 5) Move the measured current toward zero ----
+      // Limit each correction so a large offset converges predictably instead
+      // of causing one abrupt calibration jump.
+      constexpr float maxCorrectionMilliAmps = 100.0f;
+      const float correctionMilliAmps =
+          avg > maxCorrectionMilliAmps
+            ? maxCorrectionMilliAmps
+            : (avg < -maxCorrectionMilliAmps ? -maxCorrectionMilliAmps : avg);
+
+      _calibration +=
+          (correctionMilliAmps / 1000.0f) * _sensorSensitivity;
+
+      // Samples measured with the previous calibration must not influence the
+      // next correction.
+      _calibrationIdx = 0;
+      _calibrationBufferFull = false;
+      _lastCalibrationAvg = avg;
+
+      return false;
     }
 };
-
-#endif //DCSENSOR_H

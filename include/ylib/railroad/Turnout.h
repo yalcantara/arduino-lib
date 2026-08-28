@@ -1,9 +1,9 @@
+#pragma once
+
 //
 // Created by Yaison on 4/5/25.
 //
 
-#ifndef TURNOUT_H
-#define TURNOUT_H
 
 #include <Arduino.h>
 
@@ -112,4 +112,3 @@ class Turnout {
       return _servo.read();
     }
 };
-#endif //TURNOUT_H
