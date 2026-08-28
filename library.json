@@ -3,13 +3,5 @@
   "version": "0.1.0",
   "description": "Header-only helpers for Arduino projects",
   "frameworks": "arduino",
-  "platforms": "renesas-ra",
-  "headers": [
-    "ylib/core/core.h",
-    "ylib/railroad/DCSensor.h",
-    "ylib/railroad/FrogRelays.h",
-    "ylib/railroad/PCF.h",
-    "ylib/railroad/RailCrossing.h",
-    "ylib/railroad/Turnout.h"
-  ]
+  "platforms": "renesas-ra"
 }
