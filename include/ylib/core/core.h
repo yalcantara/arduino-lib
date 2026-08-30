@@ -2,10 +2,12 @@
 
 namespace ylib::core {
 
-uint8_t __YLIB_DEBUG_ENABLED = 0;
-
 // String manipulation functions
 // =========================================================
+/**
+ * Add spaces before a number until it reaches the requested text width.
+ * This is useful for keeping values aligned in serial output.
+ */
 inline String padWithSpaces(int size, long value) {
   // Ensure minimum valid size
   if (size < 1) size = 1;
@@ -23,6 +25,10 @@ inline String padWithSpaces(int size, long value) {
 
 // Helper functions
 // =========================================================
+/**
+ * Read one analog pin several times and return the rounded average.
+ * More samples reduce short spikes but also make each call take longer.
+ */
 inline int avgAnalogRead(const uint8_t pin, const uint8_t samples = 8) {
   float sum = 0.0;
   for (int i = 0; i < samples; i++) {
@@ -74,6 +80,12 @@ inline void checkArgFloat(const float min, const float max, const float value) {
 }
 // =========================================================
 
+/**
+ * A fixed-size ring that keeps the most recent values.
+ *
+ * New values replace the oldest values after the ring becomes full. Storage
+ * is allocated once when the object is created and released with the object.
+ */
 template<typename T>
 class CircularBuffer {
   T *_arr;
@@ -100,7 +112,7 @@ class CircularBuffer {
     }
 
 
-    // Assing the value to the current index and return the previous value.
+    // Store a value at the current position and return the replaced value.
     T next(T value) {
       T prev = _arr[_crtIdx];
       _arr[_crtIdx] = value;
@@ -115,6 +127,7 @@ class CircularBuffer {
       return prev;
     }
 
+    // Sum up to n recent values, starting with the newest value.
     float sumOfLast(const size_t n) const {
       if (n < 1) {
         return 0.0f;
@@ -136,6 +149,7 @@ class CircularBuffer {
       return sum;
     }
 
+    // Remove all saved values without changing the buffer capacity.
     void reset() {
       for (size_t i = 0; i < _size; i++) {
         _arr[i] = 0;
@@ -167,6 +181,12 @@ class CircularBuffer {
     }
 };
 
+/**
+ * A simple moving average over a CircularBuffer.
+ *
+ * While the buffer is filling, getAvg() uses only the values received so far.
+ * After it is full, each new value replaces the oldest value in the average.
+ */
 template<typename T>
 class SMA {
   // Simple Moving Average
@@ -224,6 +244,12 @@ class SMA {
     }
 };
 
+/**
+ * A small non-blocking timer based on millis().
+ *
+ * Call next() often from loop(). It returns true once per timeout period and
+ * false between timeouts, so the program can keep doing other work.
+ */
 class Timer {
   const unsigned long _timeout;
   unsigned long _instant = 0; // Instant in milliseconds when the timer was started
@@ -249,4 +275,4 @@ class Timer {
     }
 
 };
-}
+} // namespace ylib::core

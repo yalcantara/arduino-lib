@@ -1,19 +1,25 @@
-#pragma once
-
 //
 // Created by Yaison on 26/11/25.
 //
 
-
-
+#pragma once
 #include <Arduino.h>
 
+namespace ylib::railroad {
 enum FrogRelayState {
   POS,
   NEG,
   NEUTRAl
 };
 
+/**
+ * Control the two relays that set railroad frog polarity.
+ *
+ * operate() requests positive or negative polarity. loop() performs the
+ * change using a break-before-make sequence: both relays are turned off for
+ * one loop pass before the requested relay is turned on. This helps prevent a
+ * short circuit while polarity changes.
+ */
 class FrogRelays {
   const String _label;
   const int _pinPos;
@@ -34,7 +40,7 @@ class FrogRelays {
     }
 
     void loop() {
-
+      // A polarity change takes two passes: neutral first, target second.
       if (_state != _futureState) {
         if (_state == NEUTRAl) {
           if (_futureState == POS) {
@@ -51,6 +57,7 @@ class FrogRelays {
       }
     }
 
+    // Request positive polarity for a non-zero value, or negative for zero.
     void operate(const int val) {
       if (val) {
         _futureState = POS;
@@ -59,3 +66,4 @@ class FrogRelays {
       }
     }
 };
+} // namespace ylib::railroad

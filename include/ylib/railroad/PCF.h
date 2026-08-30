@@ -1,10 +1,15 @@
-#pragma once
-
 //
 // Created by Yaison on 25/10/25.
 //
 
-
+#pragma once
+namespace ylib::railroad {
+/**
+ * Read and write one 8-bit PCF-style I2C input/output expander.
+ *
+ * The application must start Wire before calling setup(). setup() writes 0xFF
+ * so all 8 pins are high and can act as inputs on a PCF8574-style device.
+ */
 class PCF {
   const int _addr;
 
@@ -12,33 +17,29 @@ class PCF {
     explicit PCF(const int addr): _addr(addr) {
     }
 
-    //Rule of five
+    // Copying is intentionally disabled for this hardware wrapper.
+    // Declaring these copy operations also prevents automatic move operations.
     //=========================================================================
-    //1. Copy Constructor
-    //We don't allow to be copied.
+    // Copy constructor
     PCF(const PCF &other) = delete;
 
-    //2. Copy Assignment
-    //We don't allow to be copied.
+    // Copy assignment
     PCF &operator=(const PCF &other) = delete;
-
-    //3. Move Constructor (Allowed)
-    //4. Move Assignment (Allowed)
-    //5. Delete (no need to be implemented)
     //=========================================================================
 
     void setup() const {
       Wire.beginTransmission(_addr);
-      Wire.write(0xFF); // Todos los pines en HIGH para que actúen como entradas
+      Wire.write(0xFF); // Set all 8 pins high so they can act as inputs.
       Wire.endTransmission();
     }
 
+    // Read all 8 pins. Return 0xFF when no byte is available.
     int read() const {
       Wire.requestFrom(_addr, 1);
       if (Wire.available()) {
         return Wire.read();
       }
-      return 0xFF; // Retorna todos los pin HIGH si falla
+      return 0xFF; // Treat a failed read as all pins high.
     }
 
     void write(const uint8_t b) const {
@@ -47,9 +48,11 @@ class PCF {
       Wire.endTransmission();
     }
 
+    // Change one bit in a caller-provided 8-bit state and write the new state.
     void write(const int state, const int pin, const int val) const {
       int modifiedPcf = state;
       bitWrite(modifiedPcf, pin, val);
       write(modifiedPcf);
     }
 };
+} // namespace ylib::railroad

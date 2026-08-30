@@ -2,7 +2,7 @@
 #include <unity.h>
 
 void test_dcsensor_uses_overridden_reading();
-void test_dcsensor_calibrates_300ma_offset_to_zero();
+void test_dcsensor_calibration();
 
 void setUp() {}
 
@@ -14,7 +14,7 @@ void setup()
 
   UNITY_BEGIN();
   RUN_TEST(test_dcsensor_uses_overridden_reading);
-  RUN_TEST(test_dcsensor_calibrates_300ma_offset_to_zero);
+  RUN_TEST(test_dcsensor_calibration);
   UNITY_END();
 }
 

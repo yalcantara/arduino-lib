@@ -6,16 +6,19 @@
 namespace {
 constexpr float ADC_REFERENCE_VOLTS = 5.0f;
 constexpr float ADC_MAX_READING = 1023.0f;
-constexpr float INITIAL_OFFSET_MILLIAMPS = 300.0f;
-constexpr float CALIBRATION_DEADBAND_MILLIAMPS = 2.0f;
+constexpr float INITIAL_OFFSET_MILLIAMPS = 700.0f;
+constexpr float CALIBRATION_DEADBAND_MILLIAMPS =
+    DCSensor::CALIBRATION_DEADBAND_MILLIAMPS;
 constexpr float MAX_SENSOR_NOISE_MILLIAMPS = 1.5f;
 constexpr float ADC_VOLTS_PER_COUNT = ADC_REFERENCE_VOLTS / ADC_MAX_READING;
 constexpr float NOISY_FAKE_SENSOR_SENSITIVITY =
     ADC_VOLTS_PER_COUNT / (MAX_SENSOR_NOISE_MILLIAMPS / 1000.0f);
 constexpr uint8_t MIN_CALIBRATION_ITERATIONS = 5;
-constexpr uint8_t MAX_CALIBRATION_ITERATIONS = 20;
-constexpr uint8_t REQUIRED_STABLE_READINGS = 7;
+constexpr uint8_t MAX_CALIBRATION_ITERATIONS = 50;
+constexpr uint8_t REQUIRED_STABLE_READINGS =
+    DCSensor::REQUIRED_STABLE_READINGS;
 constexpr uint8_t CURRENT_COLUMN_WIDTH = 8;
+constexpr uint8_t CALIBRATION_BUFF_SIZE = 64;
 
 constexpr float adcVoltage(const int reading) {
   return static_cast<float>(reading) * (ADC_REFERENCE_VOLTS / ADC_MAX_READING);
@@ -29,6 +32,11 @@ constexpr float calibrationForCurrent(
       (milliAmps / 1000.0f) * sensorSensitivity;
 }
 
+/**
+ * A DCSensor that returns a controlled ADC value instead of reading hardware.
+ * A fixed pseudo-random sequence can add one or more ADC counts of noise while
+ * keeping the test repeatable across runs.
+ */
 class FakeDCSensor final: public DCSensor {
   const int _reading;
   const uint8_t _maxNoiseAdcCounts;
@@ -93,6 +101,7 @@ void reportCalibrationStep(
 }
 } // namespace
 
+// Confirm that loop() uses the virtual read method and custom sensitivity.
 void test_dcsensor_uses_overridden_reading() {
   constexpr int reading = 600;
   constexpr float calibration = 2.5f;
@@ -107,7 +116,8 @@ void test_dcsensor_uses_overridden_reading() {
   TEST_ASSERT_FLOAT_WITHIN(0.01f, expectedMilliAmps, sensor.getMilliAmps());
 }
 
-void test_dcsensor_calibrates_300ma_offset_to_zero() {
+// Confirm that noisy zero-current readings must be stable 7 times in a row.
+void test_dcsensor_calibration() {
   constexpr int reading = 512;
   FakeDCSensor sensor(
     "fake-sensor",
@@ -119,7 +129,7 @@ void test_dcsensor_calibrates_300ma_offset_to_zero() {
     NOISY_FAKE_SENSOR_SENSITIVITY,
     1);
 
-  float calibrationSamples[DCSensor::CALIB_SAMPLES] = {};
+  float calibrationSamples[CALIBRATION_BUFF_SIZE] = {};
   uint8_t iterations = 0;
   uint8_t stableReadings = 0;
   bool sawNegativeNoise = false;
@@ -141,8 +151,10 @@ void test_dcsensor_calibrates_300ma_offset_to_zero() {
 
     reportCalibrationStep(iterations, currentMilliAmps, stableReadings);
 
-    if (sensor.calibrate(calibrationSamples)) {
-      Serial.println(""); // Just a new line
+    const bool calibrationComplete =
+        sensor.calibrate(calibrationSamples, CALIBRATION_BUFF_SIZE);
+    if (stableReadings < REQUIRED_STABLE_READINGS) {
+      TEST_ASSERT_FALSE(calibrationComplete);
     }
   }
 
@@ -150,6 +162,7 @@ void test_dcsensor_calibrates_300ma_offset_to_zero() {
   TEST_ASSERT_TRUE(iterations >= MIN_CALIBRATION_ITERATIONS);
   TEST_ASSERT_TRUE(iterations <= MAX_CALIBRATION_ITERATIONS);
   TEST_ASSERT_EQUAL_UINT8(iterations, sensor.readCount());
+  TEST_ASSERT_EQUAL_UINT8(REQUIRED_STABLE_READINGS, stableReadings);
   TEST_ASSERT_TRUE(sawNegativeNoise);
   TEST_ASSERT_TRUE(sawPositiveNoise);
   TEST_ASSERT_FLOAT_WITHIN(
