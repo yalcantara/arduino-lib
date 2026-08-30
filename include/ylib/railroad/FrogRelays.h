@@ -34,7 +34,9 @@ class FrogRelays {
     }
 
     void setup() const {
-      // The OUTPUT state defaults to LOW
+      // Set the output values first so neither relay is briefly energized.
+      digitalWrite(_pinNeg, LOW);
+      digitalWrite(_pinPos, LOW);
       pinMode(_pinNeg, OUTPUT);
       pinMode(_pinPos, OUTPUT);
     }

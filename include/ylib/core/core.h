@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 namespace ylib::core {
 
 // String manipulation functions
@@ -9,18 +11,20 @@ namespace ylib::core {
  * This is useful for keeping values aligned in serial output.
  */
 inline String padWithSpaces(int size, long value) {
-  // Ensure minimum valid size
-  if (size < 1) size = 1;
+  const String valueText(value);
+  const int padding = size - static_cast<int>(valueText.length());
 
-  // Construct format string dynamically, e.g., "%6ld"
-  char format[10];
-  sprintf(format, "%%%dld", size);  // Note: double %% to escape %
+  if (padding <= 0) {
+    return valueText;
+  }
 
-  // Allocate buffer with enough space: size + null terminator
-  char buffer[size + 1];
-  sprintf(buffer, format, value);
-
-  return {buffer};
+  String result;
+  result.reserve(size);
+  for (int i = 0; i < padding; ++i) {
+    result += ' ';
+  }
+  result += valueText;
+  return result;
 }
 
 // Helper functions
@@ -170,7 +174,11 @@ class CircularBuffer {
       return _filled;
     }
 
-    T* c_ptr() const {
+    T* c_ptr() {
+      return _arr;
+    }
+
+    const T* c_ptr() const {
       return _arr;
     }
 
@@ -232,14 +240,16 @@ class SMA {
     }
 
     float getAvgOfLast(size_t n) const {
-      if (n < 1) {
+      const size_t available = _buff.getFilledCount();
+      if (n < 1 || available == 0) {
         return 0.0;
       }
 
-      return _buff.sumOfLast(n) / n;
+      const size_t count = n > available ? available : n;
+      return _buff.sumOfLast(count) / static_cast<float>(count);
     }
 
-    float isFilled() const {
+    bool isFilled() const {
       return _buff.isFilled();
     }
 };
@@ -253,15 +263,17 @@ class SMA {
 class Timer {
   const unsigned long _timeout;
   unsigned long _instant = 0; // Instant in milliseconds when the timer was started
+  bool _started = false;
 
   public:
-    explicit Timer(const int timeout) : _timeout(timeout) {
+    explicit Timer(const unsigned long timeout) : _timeout(timeout) {
       checkArgUnsigned(10, 60000, _timeout);
     }
 
     bool next() {
-      if (_instant == 0) {
+      if (!_started) {
         _instant = millis();
+        _started = true;
         return false; // Timer just started, so no timeout reached yet
       }
 

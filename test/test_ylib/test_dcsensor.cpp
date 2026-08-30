@@ -3,6 +3,9 @@
 
 #include <ylib/railroad/DCSensor.h>
 
+using ylib::core::ACS712_SENSITIVITY;
+using ylib::core::DCSensor;
+
 namespace {
 constexpr float ADC_REFERENCE_VOLTS = 5.0f;
 constexpr float ADC_MAX_READING = 1023.0f;

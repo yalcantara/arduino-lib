@@ -7,10 +7,6 @@
 #include <Arduino.h>
 #include <ylib/core/core.h>
 
-
-using namespace ylib::core;
-
-
 namespace ylib::core {
 constexpr float ACS712_SENSITIVITY = 0.185; // Sensitivity of the ACS712 sensor in V/A (185 mV/A)
 constexpr float ACS712_MAX_AMPS = 5.0; // Maximum current in Amps
