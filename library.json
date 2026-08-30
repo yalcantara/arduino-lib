@@ -1,0 +1,7 @@
+{
+  "name": "ylib",
+  "version": "0.1.0",
+  "description": "Header-only helpers for Arduino projects",
+  "frameworks": "arduino",
+  "platforms": "renesas-ra"
+}

@@ -1,8 +1,17 @@
 #include <Arduino.h>
+
+#include <ylib/core/core.h>
+
+using namespace ylib::core;
+
+Timer timer60(60);
+
 void setup() {
 // write your initialization code here
 }
 
 void loop() {
-// write your code here
+
+
+  delay(1);
 }

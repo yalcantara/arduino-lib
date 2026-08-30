@@ -1,14 +1,17 @@
 //
 // Created by Yaison on 4/5/25.
 //
+#pragma once
 
-#ifndef TURNOUT_H
-#define TURNOUT_H
+
 
 #include <Arduino.h>
 
 #include <Servo.h>
 
+namespace ylib::railroad {
+// Program-wide option that applications can set for turnout movement.
+// The current move() method still writes the target angle immediately.
 bool __YLIB_TURNOUT_SLOW_MOVE_ENABLED = true;
 
 enum TurnoutType {
@@ -17,6 +20,13 @@ enum TurnoutType {
   WYE
 };
 
+/**
+ * Control one model-railroad turnout with a servo.
+ *
+ * The object stores the servo angles for the left and right routes. The
+ * turnout type decides which angle means straight. A WYE currently follows
+ * the same mapping as a right-hand turnout.
+ */
 class Turnout {
   Servo _servo;
   const String _label;
@@ -45,6 +55,7 @@ class Turnout {
     }
   }*/
 
+  // Send one target angle directly to the attached servo.
   void move(const int to) {
     _servo.write(to);
   }
@@ -59,6 +70,7 @@ class Turnout {
                               _type(type), _leftDegree(left), _rightDegree(right) {
     }
 
+    // Attach the servo and move it to its initial route.
     void setup(bool straight = true) {
       _servo.attach(_pin);
       if (straight) {
@@ -68,6 +80,7 @@ class Turnout {
       }
     }
 
+    // Move to the angle that represents the straight route for this type.
     void straight() {
       switch (_type) {
         case LEFT:
@@ -80,6 +93,7 @@ class Turnout {
       }
     }
 
+    // Move to the diverging route.
     void turn() {
       if (_type == LEFT) {
         move(_leftDegree);
@@ -88,6 +102,7 @@ class Turnout {
       }
     }
 
+    // Select the diverging route for non-zero, or straight for zero.
     void operate(const int value) {
       if (value) {
         turn();
@@ -96,6 +111,7 @@ class Turnout {
       }
     }
 
+    // Apply the inverse mapping of operate().
     void operateInv(const int value) {
       if (value) {
         straight();
@@ -108,8 +124,9 @@ class Turnout {
       return _label;
     }
 
+    // Return the last angle given to the Servo library.
     int pos() {
       return _servo.read();
     }
 };
-#endif //TURNOUT_H
+} // namespace ylib::railroad
