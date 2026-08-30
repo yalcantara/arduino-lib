@@ -16,7 +16,7 @@ namespace ylib::railroad {
 class RailCrossing {
   const String _label;
   const int _pin;
-  const int _aliveDuration; // in seconds
+  const unsigned long _aliveDurationMillis;
   unsigned long _previousMillis;
 
   public:
@@ -25,7 +25,8 @@ class RailCrossing {
                  const unsigned int
                  aliveDuration): _label(label),
                                  _pin(pin),
-                                 _aliveDuration(aliveDuration),
+                                 _aliveDurationMillis(
+                                   static_cast<unsigned long>(aliveDuration) * 1000UL),
                                  _previousMillis(0) {
     }
 
@@ -38,7 +39,7 @@ class RailCrossing {
     // Turn the output off after the active time has passed.
     void loop() const {
       unsigned long elapsedMillis = millis() - _previousMillis;
-      if (elapsedMillis > _aliveDuration * 1000) {
+      if (elapsedMillis >= _aliveDurationMillis) {
         digitalWrite(_pin, LOW);
       }
     }

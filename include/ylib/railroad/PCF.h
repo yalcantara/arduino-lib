@@ -3,6 +3,10 @@
 //
 
 #pragma once
+
+#include <Arduino.h>
+#include <Wire.h>
+
 namespace ylib::railroad {
 /**
  * Read and write one 8-bit PCF-style I2C input/output expander.
