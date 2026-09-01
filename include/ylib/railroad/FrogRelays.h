@@ -29,16 +29,17 @@ class FrogRelays {
   FrogRelayState _futureState = NEUTRAl;
 
   public:
-    FrogRelays(const String label, const int pinPos, const int pinNeg): _label(label),
+    FrogRelays(const String &label, const int pinPos, const int pinNeg): _label(label),
       _pinPos(pinPos), _pinNeg(pinNeg) {
     }
 
-    void setup() const {
+    [[nodiscard]] bool setup() const {
       // Set the output values first so neither relay is briefly energized.
       digitalWrite(_pinNeg, LOW);
       digitalWrite(_pinPos, LOW);
       pinMode(_pinNeg, OUTPUT);
       pinMode(_pinPos, OUTPUT);
+      return true;
     }
 
     void loop() {
@@ -63,7 +64,7 @@ class FrogRelays {
     void operate(const int val) {
       if (val) {
         _futureState = POS;
-      }else {
+      } else {
         _futureState = NEG;
       }
     }

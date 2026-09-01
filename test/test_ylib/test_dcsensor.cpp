@@ -104,7 +104,8 @@ void reportCalibrationStep(
 }
 } // namespace
 
-// Confirm that loop() uses the virtual read method and custom sensitivity.
+// Check that the sensor uses the test reading instead of real hardware.
+// It must also use the chosen sensitivity to calculate the current.
 void test_dcsensor_uses_overridden_reading() {
   constexpr int reading = 600;
   constexpr float calibration = 2.5f;
@@ -119,7 +120,8 @@ void test_dcsensor_uses_overridden_reading() {
   TEST_ASSERT_FLOAT_WITHIN(0.01f, expectedMilliAmps, sensor.getMilliAmps());
 }
 
-// Confirm that noisy zero-current readings must be stable 7 times in a row.
+// Check that calibration can handle small changes in the sensor reading.
+// It finishes only after enough readings stay close to zero.
 void test_dcsensor_calibration() {
   constexpr int reading = 512;
   FakeDCSensor sensor(

@@ -45,6 +45,8 @@ void resetRailCrossingFakes() {
 
 using ylib::railroad::RailCrossing;
 
+// Check that activation turns the crossing on right away.
+// It stays on for the chosen time, then turns off.
 void test_rail_crossing_turns_off_at_the_configured_time() {
   constexpr uint8_t pin = 7;
   resetRailCrossingFakes();
@@ -70,6 +72,8 @@ void test_rail_crossing_turns_off_at_the_configured_time() {
   TEST_ASSERT_EQUAL_UINT8(2, writeCount);
 }
 
+// Check that the crossing timer still works when millis() starts over at zero.
+// The crossing must turn off at the correct time after the rollover.
 void test_rail_crossing_timer_survives_millis_rollover() {
   resetRailCrossingFakes();
   fakeMillisValue = ~0UL - 499UL;

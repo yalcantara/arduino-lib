@@ -70,9 +70,9 @@ class DCSensor {
     virtual ~DCSensor() = default;
 
     // Report a pin or calibration value that is outside the expected range.
-    void setup() const {
-      checkArgument(PIN_A0, PIN_A5, _pin);
-      checkArgFloat(1.0, 5.0, _calibration);
+    [[nodiscard]] bool setup() const {
+      return  checkArgument(PIN_A0, PIN_A5, _pin) &&
+              checkArgFloat(1.0, 5.0, _calibration);
     }
 
     // Override this in tests or for hardware that needs a different read path.

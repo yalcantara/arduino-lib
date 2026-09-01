@@ -3,15 +3,14 @@
 #include <Arduino.h>
 
 namespace ylib::core {
-
 // String manipulation functions
 // =========================================================
 /**
  * Add spaces before a number until it reaches the requested text width.
  * This is useful for keeping values aligned in serial output.
  */
-inline String padWithSpaces(int size, long value) {
-  const String valueText(value);
+inline String padWithSpaces(const int size, const long value) {
+  String valueText(value);
   const int padding = size - static_cast<int>(valueText.length());
 
   if (padding <= 0) {
@@ -42,22 +41,32 @@ inline int avgAnalogRead(const uint8_t pin, const uint8_t samples = 8) {
   return static_cast<int>(round(sum / static_cast<float>(samples)));
 }
 
-inline void checkArgument(const long min, const long max, const long value) {
-  if (value > max || value < min) {
-    for (int i = 1; i <= 3; i++) {
-      Serial.print("\n\n>>>>>>>>Value out of range: ");
-      Serial.print(value);
-      Serial.print(" (");
-      Serial.print(min);
-      Serial.print(", ");
-      Serial.print(max);
-      Serial.println(")\n");
-      delay(3000);
-    }
+inline bool checkArgument(const long min,
+                          const long max,
+                          const long value,
+                          const char *msg = nullptr) {
+  if (value >= min && value <= max) {
+    return true;
   }
+
+  if (msg == nullptr || msg[0] == '\0') {
+    Serial.print("\n\n>>>>>>>>Value out of range: ");
+  } else {
+    Serial.print("\n\n>>>>>>>>");
+    Serial.println(msg);
+  }
+  Serial.print(value);
+  Serial.print(" (");
+  Serial.print(min);
+  Serial.print(", ");
+  Serial.print(max);
+  Serial.println(")\n");
+  return false;
 }
 
-inline void checkArgUnsigned(const unsigned long min, const unsigned long max, const unsigned long value) {
+inline bool checkArgUnsigned(const unsigned long min,
+                             const unsigned long max,
+                             const unsigned long value) {
   if (value > max || value < min) {
     Serial.print("\n\n>>>>>>>>Value out of range: ");
     Serial.print(value);
@@ -67,10 +76,13 @@ inline void checkArgUnsigned(const unsigned long min, const unsigned long max, c
     Serial.print(max);
     Serial.println(")\n");
     delay(3000);
+    return false;
   }
+
+  return true;
 }
 
-inline void checkArgFloat(const float min, const float max, const float value) {
+inline bool checkArgFloat(const float min, const float max, const float value) {
   if (value > max || value < min) {
     Serial.print("\n\n>>>>>>>>Value out of range: ");
     Serial.print(value);
@@ -80,7 +92,9 @@ inline void checkArgFloat(const float min, const float max, const float value) {
     Serial.print(max);
     Serial.println(")\n");
     delay(3000);
+    return false;
   }
+  return true;
 }
 // =========================================================
 
@@ -105,7 +119,7 @@ class CircularBuffer {
       _filled = false;
     }
 
-    size_t size() const { return _size; }
+    [[nodiscard]] size_t size() const { return _size; }
 
     T get(size_t index) const {
       if (index >= _size) {
@@ -132,7 +146,7 @@ class CircularBuffer {
     }
 
     // Sum up to n recent values, starting with the newest value.
-    float sumOfLast(const size_t n) const {
+    [[nodiscard]] float sumOfLast(const size_t n) const {
       if (n < 1) {
         return 0.0f;
       }
@@ -142,7 +156,7 @@ class CircularBuffer {
         return 0.0f;
       }
 
-      size_t count = n > filled ? filled : n;
+      const size_t count = n > filled ? filled : n;
       float sum = 0.0f;
 
       for (size_t i = 0; i < count; ++i) {
@@ -163,22 +177,22 @@ class CircularBuffer {
       _filled = false;
     }
 
-    size_t getFilledCount() const {
+    [[nodiscard]] size_t getFilledCount() const {
       if (_filled) {
         return _size;
       }
       return _crtIdx;
     }
 
-    bool isFilled() const {
+    [[nodiscard]] bool isFilled() const {
       return _filled;
     }
 
-    T* c_ptr() {
+    T *c_ptr() {
       return _arr;
     }
 
-    const T* c_ptr() const {
+    const T *c_ptr() const {
       return _arr;
     }
 
@@ -205,7 +219,7 @@ class SMA {
   public:
     explicit SMA(const size_t size) : _buff(size) { _accSum = 0.0; }
 
-     void reset() {
+    void reset() {
       _buff.reset();
       _accSum = 0.0;
     }
@@ -223,11 +237,11 @@ class SMA {
       }
     }
 
-    size_t size() const { return _buff.size(); }
+    [[nodiscard]] size_t size() const { return _buff.size(); }
 
-    float getAccSum() const { return _accSum; }
+    [[nodiscard]] float getAccSum() const { return _accSum; }
 
-    float getAvg() const {
+    [[nodiscard]] float getAvg() const {
       if (_buff.getFilledCount() == 0) {
         return 0.0;
       }
@@ -239,7 +253,7 @@ class SMA {
       return _accSum / _buff.getFilledCount();
     }
 
-    float getAvgOfLast(size_t n) const {
+    [[nodiscard]] float getAvgOfLast(size_t n) const {
       const size_t available = _buff.getFilledCount();
       if (n < 1 || available == 0) {
         return 0.0;
@@ -285,6 +299,5 @@ class Timer {
 
       return false; // Timeout not reached
     }
-
 };
 } // namespace ylib::core
